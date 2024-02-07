@@ -157,7 +157,7 @@ async function login(registrationNumber, providedPin) {
             return response;
         } else {
             // If the PINs don't match, return an error message
-            return "END PIN does not match. Please try again.";
+            return "END PIN does not match. Please try again or reset your pin";
         }
     } else {
         // If the student is not found, return an error message

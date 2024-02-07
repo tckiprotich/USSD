@@ -31,7 +31,17 @@ const studentSchema = new Schema({
     pin: {
         type: Number,
         required: false
-    }
+    },
+    units: [{
+        code: {
+            type: String,
+            required: true
+        },
+        name: {
+            type: String,
+            required: true
+        }
+    }]
 
 });
 

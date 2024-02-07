@@ -14,7 +14,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 
 // function to handle ussd
-app.post("/ussd", async(req, res) => {
+app.post("/ussd", async (req, res) => {
     const { sessionId, serviceCode, phoneNumber, text } = req.body;
 
     let response = "";
@@ -22,12 +22,16 @@ app.post("/ussd", async(req, res) => {
     if (text === "") {
         response = "CON Hello Welcome to your student portal \n";
         response += "1. Register \n";
-        response += "2. Login";
+        response += "2. Login\n";
+        response += "3. Forgot PIN";
     } else if (text === "1") {
         // Start the registration process
         response = "CON Enter your registration number: ";
     } else if (text === "2") {
         // Start the login process
+        response = "CON Enter your registration number: ";
+    } else if (text === "3") {
+        // Start the PIN reset process
         response = "CON Enter your registration number: ";
     } else if (text.startsWith("1*")) {
         // Handle registration steps
@@ -54,6 +58,44 @@ app.post("/ussd", async(req, res) => {
             const providedPin = steps[2];
             response = await login(registrationNumber, providedPin);
         }
+        else if (steps.length === 4) {
+            // Handle menu choice
+            const choice = steps[3];
+            if (choice === "1") {
+                response = await viewDetails(steps[1]);
+            } else if (choice === "2") {
+                response = await viewFeesStatement(steps[1]);
+            } else if (choice === "3") {
+                response = await viewUnits(steps[1]);
+            } else if (choice === "4") {
+                // Prompt for unit code
+                response = "CON Enter the unit code: ";
+            }
+        } else if (steps.length === 5 && steps[3] === "4") {
+            // Prompt for unit name
+            response = "CON Enter the unit name: ";
+        } else if (steps.length === 6 && steps[3] === "4") {
+            // Handle unit registration
+            const registrationNumber = steps[1];
+            const unitCode = steps[4];
+            const unitName = steps[5];
+            response = await registerUnit(registrationNumber, unitCode, unitName);
+        }
+
+
+    }
+    else if (text.startsWith("3*")) {
+        // Handle PIN reset steps
+        const steps = text.split('*');
+        if (steps.length === 2) {
+            // Prompt for new PIN after registration number
+            response = "CON Enter your new PIN: ";
+        } else if (steps.length === 3) {
+            // Handle PIN reset
+            const registrationNumber = steps[1];
+            const newPin = steps[2];
+            response = await resetPin(registrationNumber, newPin);
+        }
     }
 
     // Send response
@@ -64,7 +106,7 @@ app.post("/ussd", async(req, res) => {
 exports.studentportal = functions.https.onRequest(app);
 
 // function to handle register
-async function createAccount(registrationNumber){
+async function createAccount(registrationNumber) {
     // db connection
     await connectDb();
 
@@ -106,8 +148,13 @@ async function login(registrationNumber, providedPin) {
 
     if (student) {
         if (student.pin === Number(providedPin)) {
-            // If the PINs match, return a success message
-            return "END You're logged in!";
+            // If the PINs match, return a menu
+            let response = "CON Choose an option: \n";
+            response += "1. View my details \n";
+            response += "2. View fees statement \n";
+            response += "3. View units\n";
+            response += "4. Register units\n";
+            return response;
         } else {
             // If the PINs don't match, return an error message
             return "END PIN does not match. Please try again.";
@@ -115,5 +162,93 @@ async function login(registrationNumber, providedPin) {
     } else {
         // If the student is not found, return an error message
         return "END You are not enrolled in the system, visit the ICT department to get enrolled";
+    }
+}
+
+async function viewDetails(registrationNumber) {
+    // db connection
+    await connectDb();
+
+    // Find the student
+    const student = await Student.findOne({ regNo: registrationNumber });
+
+    if (student) {
+        // Return the student's details
+        return `END Your details:\nName: ${student.name}\nRegistration Number: ${student.regNo}\nPhone Number: ${student.phone}`;
+    } else {
+        // If the student is not found, return an error message
+        return "END You are not enrolled in the system, visit the ICT department to get enrolled";
+    }
+}
+
+async function viewFeesStatement(registrationNumber) {
+    // db connection
+    await connectDb();
+
+    // Find the student's fees statement
+    const feesStatement = await Student.findOne({ regNo: registrationNumber });
+
+    if (feesStatement) {
+        // Return the student's fees statement
+        return `END Your fees statement:\nTotal Fees: ${feesStatement.fees}\nPaid: ${feesStatement.paid}\nBalance: ${feesStatement.balance}`;
+    } else {
+        // If the fees statement is not found, return an error message
+        return "END No fees statement found. Please visit the finance department.";
+    }
+}
+
+async function viewUnits(registrationNumber) {
+    // db connection
+    await connectDb();
+
+    // Find the student
+    const student = await Student.findOne({ regNo: registrationNumber });
+
+    if (student && student.units && student.units.length > 0) {
+        // Return the student's units
+        let response = "END Your units:\n";
+        student.units.forEach(unit => {
+            response += `${unit.code}: ${unit.name}\n`;
+        });
+        return response;
+    } else {
+        // If no units are found, return an error message
+        return "END No units found. Please visit the academic department.";
+    }
+}
+
+async function registerUnit(registrationNumber, unitCode, unitName) {
+    // db connection
+    await connectDb();
+
+    // Find the student
+    const student = await Student.findOne({ regNo: registrationNumber });
+
+    if (student) {
+        // Add the new unit to the student's units
+        student.units.push({ code: unitCode, name: unitName });
+
+        // Save the student
+        await student.save();
+
+        // Return a success message
+        return "END Unit registered successfully!";
+    } else {
+        // If the student is not found, return an error message
+        return "END You are not enrolled in the system, visit the ICT department to get enrolled";
+    }
+}
+
+async function resetPin(registrationNumber, newPin) {
+    // db connection
+    await connectDb();
+
+    // Find the student and update their PIN
+    const student = await Student.findOneAndUpdate({ regNo: registrationNumber }, { pin: newPin });
+
+    if (student) {
+        return "END Your PIN has been reset successfully";
+    } else {
+        return "END Error resetting PIN. Please try again.";
     }
 }

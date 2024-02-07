@@ -9,7 +9,12 @@ const student = {
     phone: "0712345678",
     fees: 100000,
     balance: 0,
-    paid: 100000
+    paid: 100000,
+    pin: 1234,
+    units: [
+        { code: "CS101", name: "Introduction to Computer Science" },
+        { code: "CS102", name: "Data Structures" }
+    ]
 }
 
 // student 2
@@ -19,9 +24,12 @@ const student2 = {
     phone: "0712345679",
     fees: 100000,
     balance: 0,
-    paid: 100000
+    paid: 100000,
+    units: [
+        { code: "CS101", name: "Introduction to Computer Science" },
+        { code: "CS103", name: "Algorithms" }
+    ]
 }
-
 
 // add them to db
 const add = async () => {

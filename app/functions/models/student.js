@@ -27,6 +27,10 @@ const studentSchema = new Schema({
     paid: {
         type: Number,
         required: true
+    },
+    pin: {
+        type: Number,
+        required: false
     }
 
 });
